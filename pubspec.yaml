@@ -4,8 +4,9 @@ publish_to: 'none'
 version: 1.1.0+2
 
 environment:
-  sdk: '>=3.8.0 <4.0.0'
-  flutter: ">=3.29.0"
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: ">=3.24.0"
+
 dependencies:
   flutter:
     sdk: flutter
@@ -35,6 +36,7 @@ dependencies:
   archive: ^3.6.1
   pdf: ^3.11.1
   printing: ^5.13.4
+  share_plus: ^10.1.2
 
   # Save-to-gallery / save-to-folder (v2 fix)
   gal: ^2.3.3
@@ -54,11 +56,12 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
   build_runner: ^2.4.13
-  hive_ce_generator: ^1.0.0
+  hive_generator: ^2.0.1
   freezed: ^2.5.7
   json_serializable: ^6.8.0
   riverpod_generator: ^2.6.2
   flutter_launcher_icons: ^0.13.1
+
 flutter:
   uses-material-design: true
 
