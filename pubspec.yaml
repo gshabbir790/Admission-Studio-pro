@@ -1,0 +1,88 @@
+name: admission_studio_pro
+description: "Admission Photo Studio Pro — offline batch student photo capture, face-aware resize, background removal, ZIP/PDF export."
+publish_to: 'none'
+version: 1.1.0+2
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Camera & media
+  camera: ^0.11.0+2
+  image_picker: ^1.1.2
+
+  # Image processing
+  image: ^4.2.0
+
+  # Storage / persistence
+  path_provider: ^2.1.4
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Permissions
+  permission_handler: ^11.3.1
+
+  # Export
+  archive: ^3.6.1
+  pdf: ^3.11.1
+  printing: ^5.13.4
+
+  # Save-to-gallery / save-to-folder (v2 fix)
+  gal: ^2.3.3
+  file_picker: ^10.3.10
+
+  # Background segmentation
+  google_mlkit_selfie_segmentation: ^0.11.0
+
+  # Utilities
+  uuid: ^4.5.1
+  path: ^1.9.0
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.13
+  hive_generator: ^2.0.1
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  riverpod_generator: ^2.6.2
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icon/
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+
+flutter_launcher_icons:
+  android: "launch_background"
+  ios: true
+  image_path: "assets/icon/app_icon_master_1024.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/icon/app_icon_master_1024.png"

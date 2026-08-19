@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Camera (spec §5, §30) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
+    <!-- Gallery import / batch import (spec §8, §30). READ_MEDIA_IMAGES is
+         the modern (API 33+) scoped replacement for READ_EXTERNAL_STORAGE;
+         both are declared with maxSdkVersion gating so only the
+         API-appropriate one is effectively requested at runtime via
+         permission_handler. No WRITE_EXTERNAL_STORAGE is requested —
+         exports use MediaStore/SAF instead
+         of legacy direct file writes (spec §31). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Needed by the `gal` package's Save-to-Gallery feature on API 28
+         and below only — API 29+ uses scoped-storage MediaStore APIs and
+         needs no declared permission at all (v2 addition, spec request:
+         "Save to Gallery" for print-sheet JPGs). -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <application
+        android:label="Admission Studio Pro"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:usesCleartextTraffic="false">
+
+        <!-- usesCleartextTraffic=false + no INTERNET permission declared:
+             the app is offline-first end to end (spec §4). ML Kit's bundled
+             on-device models are provisioned by Google Play Services at the
+             OS level, not fetched by this app's own network stack. -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+
+        <!-- ML Kit face-detection/selfie-segmentation model provisioning
+             (spec §4, §40): tells Play Services to install these models at
+             app-install time rather than lazily on first use, so the app
+             works fully offline immediately after install (Airplane Mode
+             requirement, spec §40). -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="segmentation" />
+
+    </application>
+
+    <!-- Required to query image-picking/camera activities on Android 11+ -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+</manifest>

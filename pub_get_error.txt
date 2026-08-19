@@ -1,0 +1,9 @@
+Resolving dependencies...
+Because riverpod_generator >=2.6.4 <3.0.0-dev.2 depends on analyzer ^7.0.0 and riverpod_generator >=2.6.1 <2.6.4 depends on analyzer ^6.7.0, riverpod_generator >=2.6.1 <3.0.0-dev.2 requires analyzer ^6.7.0 or ^7.0.0.
+And because analyzer >=6.6.0 <6.9.0 depends on macros >=0.1.2-main.3 <0.1.3, riverpod_generator >=2.6.1 <3.0.0-dev.2 requires macros >=0.1.2-main.3 <0.1.3 or analyzer >=6.9.0 <7.0.0 or ^7.0.0.
+Because macros >=0.1.2-main.4 <0.1.3-main.0 depends on _macros 0.3.2 from sdk and macros >=0.1.2-main.2 <0.1.2-main.4 depends on _macros 0.3.1 from sdk, macros >=0.1.2-main.2 <0.1.3-main.0 requires _macros 0.3.1 or 0.3.2 from sdk.
+Thus, riverpod_generator >=2.6.1 <3.0.0-dev.2 requires analyzer >=6.9.0 <7.0.0 or ^7.0.0 or _macros 0.3.1 or 0.3.2 from sdk.
+And because hive_generator >=2.0.1 depends on analyzer >=4.6.0 <7.0.0 and analyzer >=6.9.0 <7.3.0 depends on macros >=0.1.3-main.0 <0.1.4, if riverpod_generator >=2.6.1 <3.0.0-dev.2 and hive_generator >=2.0.1 then _macros 0.3.1 or 0.3.2 from sdk or macros >=0.1.3-main.0 <0.1.4.
+And because macros >=0.1.3-main.0 depends on _macros from sdk which doesn't exist (could not find package _macros in the Dart SDK), riverpod_generator >=2.6.1 <3.0.0-dev.2 is incompatible with hive_generator >=2.0.1.
+So, because admission_studio_pro depends on both hive_generator ^2.0.1 and riverpod_generator ^2.6.2, version solving failed.
+Failed to update packages.
