@@ -185,10 +185,11 @@ class _ExportSettingsSheetState extends ConsumerState<ExportSettingsSheet> {
             ),
             const SizedBox(height: 12),
             _BackgroundPreviewGrid(
-              photos: session.photos,
-              mode: session.backgroundMode,
-              intensity: session.backgroundIntensity,
-              cache: _previewCache,
+  photos: session.photos,
+  mode: session.backgroundMode,
+  intensity: session.backgroundIntensity,
+  cache: _previewCache,
+  segmenter: ref.read(segmentationServiceProvider),
             ),
           ],
 
