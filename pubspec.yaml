@@ -55,11 +55,16 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
   build_runner: ^2.4.13
-  hive_generator: ^2.0.1
+  # hive_generator ko community edition (ce) se replace kiya gaya hai version conflicts se bachne ke liye
+  hive_ce_generator: ^1.0.0
   freezed: ^2.5.7
   json_serializable: ^6.8.0
   riverpod_generator: ^2.6.2
   flutter_launcher_icons: ^0.13.1
+
+# Version resolution conflict ko bypass karne ke liye overrides
+dependency_overrides:
+  source_gen: ^1.5.0
 
 flutter:
   uses-material-design: true
