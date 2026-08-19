@@ -13,6 +13,9 @@ void main() {
       expect(a4h, 3507); // 11.69 * 300 rounded
     });
 
+    test('4x5 grid yields 20 photos per page', () {
+      expect(AppConstants.printCols * AppConstants.printRows, 20);
+    });
 
     test('margin/gutter at 300 DPI match HTML app constants', () {
       const dpi = AppConstants.printDpi;
