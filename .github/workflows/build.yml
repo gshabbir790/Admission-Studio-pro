@@ -31,8 +31,7 @@ jobs:
         run: flutter analyze || true
 
       - name: Run tests
-       run: flutter test || true
-
+        run: flutter test || true
 
       - name: Build APK
         run: flutter build apk --release --verbose
