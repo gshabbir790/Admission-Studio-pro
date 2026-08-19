@@ -68,7 +68,7 @@ lib/
     segmentation/   SegmentationService (ML Kit Selfie Segmentation)
     image_processing/ ImageAdjustmentsService, ResizeService, CaptionService,
                        CompressionService, ImageProcessingService (orchestrator)
-    export/         ZipExportService, 
+    export/         ZipExportService, ShareService
     pdf/            PrintSheetService, PdfExportService
     permissions/    PermissionService
     storage/        SessionRepository (Hive autosave/resume)
@@ -112,7 +112,7 @@ autosaves and invalidates that photo's processed-export cache.
 resize → adjust → segment → caption → compress per photo (exact port of the
 HTML's `processBtn` handler, including the same file-size binary-search
 compression). `ZipExportService`, `PrintSheetService` (A4 @300 DPI, 4×5 grid,
-name below photo, auto-paginated), `PdfExportService`, all
+name below photo, auto-paginated), `PdfExportService`, `ShareService`, all
 wired through `ExportController` with a live progress dialog and a
 post-process export-actions sheet + paged A4 preview screen.
 

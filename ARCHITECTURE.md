@@ -94,7 +94,7 @@ permission_handler: ^11.3.1
 archive: ^3.6.1
 pdf: ^3.11.1
 printing: ^5.13.4
-: ^10.1.2
+share_plus: ^10.1.2
 hive: ^2.2.3
 hive_flutter: ^1.1.0
 flutter_riverpod: ^2.6.1
