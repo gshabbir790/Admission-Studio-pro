@@ -30,9 +30,6 @@ jobs:
       - name: Generate App Launcher Icons
         run: dart run flutter_launcher_icons
 
-      - name: Run Code Generation (Hive & Riverpod)
-        run: dart run build_runner build --delete-conflicting-outputs
-
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
 
