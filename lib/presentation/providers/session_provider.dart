@@ -37,6 +37,7 @@ class SessionNotifier extends StateNotifier<PhotoSession> {
       targetHeight: s.targetHeight,
       sizePreset: s.sizePreset,
       backgroundMode: s.backgroundMode,
+      backgroundIntensity: s.backgroundIntensity,
       jpegQuality: s.jpegQuality,
       sizeLimitEnabled: s.sizeLimitEnabled,
       sizeLimitValue: s.sizeLimitValue,
@@ -71,6 +72,7 @@ class SessionNotifier extends StateNotifier<PhotoSession> {
           name: name,
           nameEnabled: nameEnabled,
           face: face,
+          clearFace: face == null,
         )..invalidateProcessedCache();
         state.photos[idx] = updated;
         _autosave();
@@ -101,6 +103,7 @@ class SessionNotifier extends StateNotifier<PhotoSession> {
     final removed = state.photos.removeAt(idx);
     ImageFileUtils.deleteIfExists(removed.originalPath);
     ImageFileUtils.deleteIfExists(removed.processedPath);
+    ImageFileUtils.deleteIfExists(removed.printPath);
     ImageFileUtils.deleteIfExists(removed.thumbnailPath);
     _autosave();
   }
