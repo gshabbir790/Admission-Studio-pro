@@ -113,6 +113,7 @@ class PhotoItem extends HiveObject {
     double? contrast,
     double? sharpen,
     ProcessingStatus? processingStatus,
+    bool clearFace = false,
   }) {
     return PhotoItem(
       id: id,
@@ -122,7 +123,7 @@ class PhotoItem extends HiveObject {
       printPath: printPath ?? this.printPath,
       name: name ?? this.name,
       nameEnabled: nameEnabled ?? this.nameEnabled,
-      face: face ?? this.face,
+      face: clearFace ? null : (face ?? this.face),
       brightness: brightness ?? this.brightness,
       contrast: contrast ?? this.contrast,
       sharpen: sharpen ?? this.sharpen,

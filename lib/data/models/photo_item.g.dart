@@ -30,13 +30,14 @@ class PhotoItemAdapter extends TypeAdapter<PhotoItem> {
       createdAt: fields[10] as DateTime?,
       updatedAt: fields[11] as DateTime?,
       processingStatus: fields[12] as ProcessingStatus,
+      printPath: fields[13] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, PhotoItem obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -62,7 +63,9 @@ class PhotoItemAdapter extends TypeAdapter<PhotoItem> {
       ..writeByte(11)
       ..write(obj.updatedAt)
       ..writeByte(12)
-      ..write(obj.processingStatus);
+      ..write(obj.processingStatus)
+      ..writeByte(13)
+      ..write(obj.printPath);
   }
 
   @override
