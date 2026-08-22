@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../controllers/capture_flow_controller.dart';
 import '../providers/session_provider.dart';
+import '../widgets/branded_app_bar.dart';
+import '../widgets/image_dimensions_badge.dart';
 
 /// Mirrors the HTML app's `#namingPanel` (spec §9): preview, name field,
 /// with/without-name radios, confirm. For retakes the previous student's
@@ -86,66 +88,73 @@ class _PhotoNamingScreenState extends ConsumerState<PhotoNamingScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-        title: Text(
-          flow.galleryQueueLength > 0
-              ? 'Name Student (${flow.galleryQueueLength} remaining)'
-              : 'Name Student',
+        appBar: BrandedAppBar(
+          title: 'Name Student',
+          subtitle: flow.galleryQueueLength > 0
+              ? '${flow.galleryQueueLength} remaining'
+              : null,
+          onLeadingTap: () => ref.read(captureFlowProvider.notifier).goToChooser(),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            if (previewPath != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  File(previewPath),
-                  width: 110,
-                  height: 138,
-                  fit: BoxFit.cover,
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              if (previewPath != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    File(previewPath),
+                    width: 130,
+                    height: 163,
+                    fit: BoxFit.cover,
+                  ),
                 ),
-              ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _nameController,
-              enabled: _nameEnabled,
-              textAlign: TextAlign.center,
-                  decoration: const InputDecoration(
-                hintText: 'Student name',
-                border: OutlineInputBorder(),
-              ),
-              onSubmitted: (_) => _confirm(),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ChoiceChip(
-                  label: const Text('With Name'),
-                  selected: _nameEnabled,
-                  onSelected: (_) => setState(() => _nameEnabled = true),
-                ),
-                const SizedBox(width: 10),
-                ChoiceChip(
-                  label: const Text('Without Name'),
-                  selected: !_nameEnabled,
-                  onSelected: (_) => setState(() => _nameEnabled = false),
-                ),
+                const SizedBox(height: 8),
+                // v2 addition (spec request: "camera ya gallery se select ki
+                // gayi tasveer ka asal size aur dimension likha hona
+                // chahiye") — shows the real pixel dimensions + file size of
+                // the photo just captured/picked, not just a thumbnail.
+                ImageDimensionsBadge(path: previewPath, dark: false),
               ],
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _confirm,
-                child: const Text('Add'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameController,
+                enabled: _nameEnabled,
+                textAlign: TextAlign.center,
+                decoration: const InputDecoration(
+                  hintText: 'Student name',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _confirm(),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ChoiceChip(
+                    label: const Text('With Name'),
+                    selected: _nameEnabled,
+                    onSelected: (_) => setState(() => _nameEnabled = true),
+                  ),
+                  const SizedBox(width: 10),
+                  ChoiceChip(
+                    label: const Text('Without Name'),
+                    selected: !_nameEnabled,
+                    onSelected: (_) => setState(() => _nameEnabled = false),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _confirm,
+                  child: const Text('Add'),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

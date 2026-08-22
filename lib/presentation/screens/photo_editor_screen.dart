@@ -10,6 +10,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/utils/image_file_utils.dart';
 import '../../services/image_processing/image_adjustments_service.dart';
 import '../providers/session_provider.dart';
+import '../widgets/branded_app_bar.dart';
 import '../widgets/crop_box_overlay.dart';
 
 /// Brightness/Contrast/Sharpen editor (spec §11). Design note vs. the
@@ -55,6 +56,15 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
   bool _cropMode = false;
   Rect _cropRect = const Rect.fromLTWH(0, 0, 1, 1);
   bool _cropping = false;
+
+  // v2 addition (spec request: "edit photos option ke andar mazeed zaroori
+  // options shamil karein") — rotate/flip are the other edits every basic
+  // photo editor needs and were entirely missing before. Applied the same
+  // way crop is: destructively re-encoded into a new original file (so
+  // export/print always reflect the corrected orientation) rather than as a
+  // non-destructive parameter, since "rotated 90°" isn't something the
+  // brightness/contrast/sharpen pipeline has a slot for.
+  bool _transforming = false;
 
   Timer? _debounce;
 
@@ -149,6 +159,36 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
     }
   }
 
+  /// Shared helper for rotate/flip: re-encodes [transform] applied to the
+  /// current source image, persists it as the photo's new original (same
+  /// pattern as [_applyCrop]), and refreshes the live preview.
+  Future<void> _applyTransform(img.Image Function(img.Image) transform) async {
+    final src = _sourceImage;
+    if (src == null || _transforming || _cropping) return;
+    setState(() => _transforming = true);
+    try {
+      final transformed = transform(src);
+      final bytes = Uint8List.fromList(img.encodeJpg(transformed, quality: 95));
+      final newPath = await ImageFileUtils.saveOriginalBytes(bytes);
+
+      await ref
+          .read(sessionProvider.notifier)
+          .replaceOriginalImage(widget.photoId, newPath);
+
+      if (!mounted) return;
+      setState(() => _sourceImage = transformed);
+      _updatePreview();
+    } finally {
+      if (mounted) setState(() => _transforming = false);
+    }
+  }
+
+  Future<void> _rotate(bool clockwise) =>
+      _applyTransform((src) => img.copyRotate(src, angle: clockwise ? 90 : -90));
+
+  Future<void> _flipHorizontal() =>
+      _applyTransform((src) => img.flipHorizontal(src));
+
   Future<void> _apply() async {
     await ref.read(sessionProvider.notifier).updateEditParams(
           widget.photoId,
@@ -167,17 +207,44 @@ class _PhotoEditorScreenState extends ConsumerState<PhotoEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final busy = _loading || _cropping || _transforming;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Photo'),
+      appBar: BrandedAppBar(
+        title: 'Edit Photo',
+        onLeadingTap: () => Navigator.of(context).maybePop(),
         actions: [
-          if (!_cropMode)
+          if (!_cropMode) ...[
             IconButton(
               icon: const Icon(Icons.crop_rounded),
               tooltip: 'Crop',
-              onPressed: _loading ? null : () => setState(() => _cropMode = true),
+              color: Colors.white,
+              onPressed: busy ? null : () => setState(() => _cropMode = true),
             ),
-          TextButton(onPressed: _reset, child: const Text('Reset')),
+            IconButton(
+              icon: const Icon(Icons.rotate_left_rounded),
+              tooltip: 'Rotate left',
+              color: Colors.white,
+              onPressed: busy ? null : () => _rotate(false),
+            ),
+            IconButton(
+              icon: const Icon(Icons.rotate_right_rounded),
+              tooltip: 'Rotate right',
+              color: Colors.white,
+              onPressed: busy ? null : () => _rotate(true),
+            ),
+            IconButton(
+              icon: const Icon(Icons.flip_rounded),
+              tooltip: 'Flip horizontal',
+              color: Colors.white,
+              onPressed: busy ? null : _flipHorizontal,
+            ),
+          ],
+          TextButton(
+            onPressed: busy ? null : _reset,
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            child: const Text('Reset'),
+          ),
         ],
       ),
       body: _loading

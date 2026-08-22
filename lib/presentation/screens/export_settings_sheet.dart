@@ -134,10 +134,15 @@ class _ExportSettingsSheetState extends ConsumerState<ExportSettingsSheet> {
           const SizedBox(height: 20),
           Text('Background', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
+          // v2 fix: the dropdown used to repeat its own section heading as
+          // an internal `labelText` too ("Background" shown twice — once as
+          // the Text above, once floated inside the field itself, report:
+          // "background dropdown par do baar Background likha hua aa raha
+          // hai"). The field now only carries the icon; the heading above it
+          // already says what it is.
           DropdownButtonFormField<BackgroundMode>(
             value: session.backgroundMode,
             decoration: const InputDecoration(
-              labelText: 'Background',
               prefixIcon: Icon(Icons.layers_outlined),
             ),
             items: const [
@@ -214,24 +219,82 @@ class _ExportSettingsSheetState extends ConsumerState<ExportSettingsSheet> {
           ),
 
           const SizedBox(height: 20),
-          Text('JPEG Quality: ${session.jpegQuality}%',
-              style: Theme.of(context).textTheme.titleSmall),
+          Text('Output Format', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+            'Applies to the ZIP/download/Gallery copy. The print sheet/PDF '
+            'always uses JPEG internally for compositing.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<ImageOutputFormat>(
+            segments: const [
+              ButtonSegment(
+                value: ImageOutputFormat.jpeg,
+                label: Text('JPEG'),
+                icon: Icon(Icons.image_outlined),
+              ),
+              ButtonSegment(
+                value: ImageOutputFormat.png,
+                label: Text('PNG'),
+                icon: Icon(Icons.image_outlined),
+              ),
+            ],
+            selected: {session.outputFormat},
+            onSelectionChanged: (s) => notifier.setOutputFormat(s.first),
+          ),
+
+          const SizedBox(height: 20),
+          // v2 fix (spec request: "limit file size on ho to JPEG quality
+          // option off ho jaana chahiye" — a manual quality slider and an
+          // automatic size-fitting search are two ways of picking the same
+          // number, so leaving both editable at once was confusing/
+          // contradictory). Once "Limit file size" is on, the slider is
+          // shown disabled and grayed out — CompressionService's binary
+          // search (see its class doc) already automatically picks the
+          // highest quality that still fits the limit, as fast as possible,
+          // so there's nothing left for the manual slider to control.
+          Text(
+            'JPEG Quality: ${session.jpegQuality}%',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: session.sizeLimitEnabled
+                      ? Theme.of(context).disabledColor
+                      : null,
+                ),
+          ),
+          if (session.sizeLimitEnabled)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                'Auto-managed while "Limit file size" is on — the app '
+                'automatically finds the best quality that fits your size '
+                'limit, as fast as possible.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
           Slider(
             value: session.jpegQuality.toDouble(),
             min: AppConstants.jpegQualityMin.toDouble(),
             max: AppConstants.jpegQualityMax.toDouble(),
             divisions: AppConstants.jpegQualityMax - AppConstants.jpegQualityMin,
-            onChanged: (v) => notifier.setJpegQuality(v.round()),
+            onChanged: session.sizeLimitEnabled || session.outputFormat == ImageOutputFormat.png
+                ? null
+                : (v) => notifier.setJpegQuality(v.round()),
           ),
 
           const SizedBox(height: 12),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Limit file size'),
-            value: session.sizeLimitEnabled,
-            onChanged: (v) => notifier.setSizeLimit(enabled: v),
+            subtitle: session.outputFormat == ImageOutputFormat.png
+                ? const Text('Not available for PNG output (lossless format)')
+                : null,
+            value: session.sizeLimitEnabled && session.outputFormat != ImageOutputFormat.png,
+            onChanged: session.outputFormat == ImageOutputFormat.png
+                ? null
+                : (v) => notifier.setSizeLimit(enabled: v),
           ),
-          if (session.sizeLimitEnabled)
+          if (session.sizeLimitEnabled && session.outputFormat != ImageOutputFormat.png)
             Row(
               children: [
                 Expanded(

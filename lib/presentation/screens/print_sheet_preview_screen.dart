@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../presentation/providers/session_provider.dart';
 import '../controllers/export_controller.dart';
+import '../widgets/branded_app_bar.dart';
 
 /// Print-sheet preview (spec §20): paged viewer over the pages built by
 /// `PrintSheetService`, with Save Photos to Gallery / Save PDF to Folder.
@@ -52,12 +53,17 @@ class _PrintSheetPreviewScreenState extends ConsumerState<PrintSheetPreviewScree
     final pageSize = ref.watch(sessionProvider.select((s) => s.printPageSize));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          pages.isEmpty
-              ? 'Print Sheet'
-              : 'Page ${_currentPage + 1} / ${pages.length} · ${pageSize.label}',
-        ),
+      // v2 fix (spec request: "PDF print preview screen par title bar
+      // mukammal nazar nahi aata"): the old plain AppBar Text had no
+      // maxLines/overflow handling, so the long combined
+      // "Page 1 / 3 · 4×6 in (Photo Lab Standard)" string would wrap and get
+      // clipped by the toolbar's fixed height. BrandedAppBar always
+      // single-lines + ellipsizes the title, and the page size now uses its
+      // short form as a subtitle instead of being crammed into the title.
+      appBar: BrandedAppBar(
+        title: pages.isEmpty ? 'Print Sheet' : 'Page ${_currentPage + 1} / ${pages.length}',
+        subtitle: pages.isEmpty ? null : pageSize.shortLabel,
+        onLeadingTap: () => Navigator.of(context).maybePop(),
       ),
       body: pages.isEmpty
           ? const Center(child: Text('No pages to preview.'))

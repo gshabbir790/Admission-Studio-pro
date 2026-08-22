@@ -9,6 +9,7 @@ import '../../core/utils/image_file_utils.dart';
 import '../../services/camera/camera_service.dart';
 import '../controllers/capture_flow_controller.dart';
 import '../providers/service_providers.dart';
+import '../widgets/image_dimensions_badge.dart';
 import '../widgets/oval_guide_overlay.dart';
 import 'photo_naming_screen.dart';
 
@@ -29,6 +30,14 @@ class CameraCaptureScreen extends ConsumerStatefulWidget {
 
 class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> {
   bool _navigatedToNaming = false;
+  bool _torchBusy = false;
+
+  Future<void> _toggleTorch(CameraService camera) async {
+    if (_torchBusy) return;
+    setState(() => _torchBusy = true);
+    await camera.toggleTorch();
+    if (mounted) setState(() => _torchBusy = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +74,15 @@ class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> {
           onPressed: () => ref.read(captureFlowProvider.notifier).goToChooser(),
         ),
         actions: [
+          // v2 addition (spec request: "camera option par torch on/off ka
+          // option hi nahi hai") — only shown once the controller is ready,
+          // since flash mode can't be set before that.
+          if (flow.cameraAvailable && camera.isInitialized)
+            IconButton(
+              icon: Icon(camera.isTorchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded),
+              tooltip: camera.isTorchOn ? 'Turn torch off' : 'Turn torch on',
+              onPressed: _torchBusy ? null : () => _toggleTorch(camera),
+            ),
           IconButton(
             icon: const Icon(Icons.cameraswitch_outlined),
             onPressed: () => ref.read(captureFlowProvider.notifier).switchCamera(),
@@ -87,6 +105,16 @@ class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> {
                             _buildPreviewOrFrozen(camera, flow),
                             if (flow.mode == CaptureMode.live)
                               const OvalGuideOverlay(),
+                            if (flow.mode == CaptureMode.confirm &&
+                                flow.pendingImagePath != null)
+                              Positioned(
+                                top: 12,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: ImageDimensionsBadge(path: flow.pendingImagePath!),
+                                ),
+                              ),
                             if (flow.mode == CaptureMode.confirm)
                               _ConfirmControls(
                                 onReject: () => ref

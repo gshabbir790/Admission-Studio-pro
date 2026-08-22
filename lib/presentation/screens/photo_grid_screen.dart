@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../data/models/photo_item.dart';
 import '../controllers/capture_flow_controller.dart';
 import '../controllers/export_controller.dart';
 import '../providers/session_provider.dart';
+import '../widgets/branded_app_bar.dart';
 import '../widgets/photo_grid_card.dart';
 import '../widgets/processing_progress_dialog.dart';
 import 'camera_capture_screen.dart';
@@ -126,28 +128,18 @@ class PhotoGridScreen extends ConsumerWidget {
     final progress = session.capacity == 0 ? 0.0 : (filled / session.capacity).clamp(0.0, 1.0);
 
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 16,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Admission Studio Pro',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-            ),
-            Text(
-              'Student Photo Workspace',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
+      // v2 fix (spec request: "home screen ko mazeed khoobsurat banayen" +
+      // "har screen par appbar khoobsurat/professional banayen"): shared
+      // BrandedAppBar instead of a plain AppBar, matching every other
+      // screen now. The standalone Reset icon that used to live up here has
+      // moved down next to Settings/Add Photos — see the bottom panel below
+      // (spec request: "Reset button ko Add Photos aur Settings ke saath
+      // ek hi line mein adjust karein").
+      appBar: BrandedAppBar(
+        title: 'Admission Studio Pro',
+        subtitle: 'Student Photo Workspace',
+        leadingIcon: Icons.badge_outlined,
         actions: [
-          if (filled > 0)
-            IconButton(
-              tooltip: 'Reset session',
-              icon: const Icon(Icons.restart_alt_rounded),
-              onPressed: () => _confirmReset(context, ref),
-            ),
           PopupMenuButton<String>(
             tooltip: 'More options',
             onSelected: (value) {
@@ -155,7 +147,7 @@ class PhotoGridScreen extends ConsumerWidget {
                 showAboutDialog(
                   context: context,
                   applicationName: 'Admission Studio Pro',
-                  applicationVersion: '1.0.0',
+                  applicationVersion: '1.2.0',
                   applicationIcon: const Icon(Icons.camera_alt_rounded, size: 32),
                   children: const [
                     SizedBox(height: 8),
@@ -226,7 +218,7 @@ class PhotoGridScreen extends ConsumerWidget {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                 sliver: SliverGrid(
                 // v2 fix: was maxCrossAxisExtent:150, which only ever
                 // rendered 3 thumbnails per row on a typical phone width
@@ -282,55 +274,87 @@ class PhotoGridScreen extends ConsumerWidget {
           ],
         ),
       ),
+      // v2 fix (spec request: "Reset button ko Add Photos aur Settings ke
+      // saath ek hi line mein adjust karein"): Reset, Settings, and Add
+      // Photos are now one unified bottom panel (was previously an isolated
+      // Reset icon up in the app bar plus a separate floating-button row) —
+      // a single `bottomNavigationBar` with two rows instead of a
+      // `floatingActionButton` also avoids the FAB potentially overlapping
+      // grid content.
       bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Row(
+        minimum: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (!session.singleMode) ...[
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => ref
-                      .read(sessionProvider.notifier)
-                      .addCapacityPage(),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('20 more'),
+            Row(
+              children: [
+                if (filled > 0) ...[
+                  SizedBox(
+                    width: 52,
+                    height: 48,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
+                      onPressed: () => _confirmReset(context, ref),
+                      child: const Icon(Icons.restart_alt_rounded, size: 20),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openExportSettings(context),
+                      icon: const Icon(Icons.tune_rounded, size: 18),
+                      label: const Text('Settings'),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-            ],
-            Expanded(
-              flex: 2,
-              child: FilledButton.icon(
-                onPressed: filled == 0 ? null : () => _processAll(context, ref),
-                icon: const Icon(Icons.auto_fix_high_rounded),
-                label: Text(filled == 0 ? 'Process photos' : 'Process $filled photos'),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: FilledButton.icon(
+                      onPressed: () =>
+                          _startAddPhotos(context, ref, session.photos.isEmpty),
+                      icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                      label: const Text('Add Photos'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (!session.singleMode) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: session.capacity >= AppConstants.maxBatchCapacity
+                          ? null
+                          : () => ref.read(sessionProvider.notifier).addCapacityPage(),
+                      icon: const Icon(Icons.add_rounded),
+                      label: Text(
+                        session.capacity >= AppConstants.maxBatchCapacity
+                            ? 'Max ${AppConstants.maxBatchCapacity}'
+                            : '20 more',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.icon(
+                    onPressed: filled == 0 ? null : () => _processAll(context, ref),
+                    icon: const Icon(Icons.auto_fix_high_rounded),
+                    label: Text(filled == 0 ? 'Process photos' : 'Process $filled photos'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-      ),
-      floatingActionButton: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // v2: export-settings entry point moved here, right next to "Add
-          // Photos", per request ("settings ka button add photos button ke
-          // saath, usi style mein bana dein") — previously it was a small
-          // icon tucked in the app bar where it was easy to miss.
-          FloatingActionButton.extended(
-            heroTag: 'export_settings_fab',
-            tooltip: 'Export settings',
-            onPressed: () => _openExportSettings(context),
-            icon: const Icon(Icons.tune_rounded),
-            label: const Text('Settings'),
-          ),
-          const SizedBox(width: 12),
-          FloatingActionButton.extended(
-            heroTag: 'add_photos_fab',
-            onPressed: () => _startAddPhotos(context, ref, session.photos.isEmpty),
-            icon: const Icon(Icons.add_a_photo_outlined),
-            label: const Text('Add Photos'),
-          ),
-        ],
       ),
     );
   }
@@ -360,9 +384,15 @@ class PhotoGridScreen extends ConsumerWidget {
     }
   }
 
-  /// v2: asks Single vs. Batch only when the session is empty (so an
-  /// in-progress batch never gets its mode switched mid-way) — fixes the
-  /// complaint that a single photo forced the full 20-slot grid on screen.
+  /// v2 rework (spec request: "How many photos wale option mein do options
+  /// hone chahiye: [Single Photo], [Multiple Photos]. Multiple Photos mein
+  /// max 60 tasveerein aur ek Done button hona chahiye"): step 1 picks
+  /// Single vs. Multiple; choosing Multiple opens a second step — a capacity
+  /// stepper capped at [AppConstants.maxBatchCapacity] — instead of always
+  /// silently defaulting to 20. ("Done" already exists as soon as the grid
+  /// has 1+ photos, on the capture-chooser screen — see that screen's app
+  /// bar actions.) Only asked when the session is empty (so an in-progress
+  /// batch never gets its mode switched mid-way).
   Future<void> _startAddPhotos(BuildContext context, WidgetRef ref, bool canChooseMode) async {
     if (!canChooseMode) {
       Navigator.of(context).push(
@@ -371,16 +401,14 @@ class PhotoGridScreen extends ConsumerWidget {
       return;
     }
 
-    // v2 fix: the two choices used to be visually unequal (a plain
-    // TextButton next to a FilledButton, stacked oddly in the actions row —
-    // report: "ye ek hi line mein, aamne saamne hona chahiye"). Both options
-    // are now equal-weight buttons side by side in one row.
     final choice = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('How many photos?'),
-        content: const Text('Choose single-photo mode for one quick capture, '
-            'or batch mode for a full session (20+ photos).'),
+        content: const Text(
+          'Choose single-photo mode for one quick capture, or multiple '
+          'photos for a full session.',
+        ),
         actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         actions: [
           Row(
@@ -388,7 +416,7 @@ class PhotoGridScreen extends ConsumerWidget {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Batch (20+)'),
+                  child: const Text('Multiple Photos'),
                 ),
               ),
               const SizedBox(width: 10),
@@ -405,12 +433,66 @@ class PhotoGridScreen extends ConsumerWidget {
     );
     if (choice == null) return;
 
-    ref.read(sessionProvider.notifier).setSingleMode(choice);
+    if (choice) {
+      ref.read(sessionProvider.notifier).setSingleMode(true);
+    } else {
+      if (!context.mounted) return;
+      final capacity = await _pickBatchCapacity(context);
+      if (capacity == null) return; // person backed out of step 2
+      ref.read(sessionProvider.notifier).setSingleMode(false, batchCapacity: capacity);
+    }
+
     if (context.mounted) {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const CaptureChooserScreen()),
       );
     }
+  }
+
+  /// Step 2 of "Multiple Photos": how many, up to the hard 60-photo ceiling.
+  Future<int?> _pickBatchCapacity(BuildContext context) {
+    var value = AppConstants.defaultCapacity;
+    return showDialog<int>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('How many photos?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$value photos',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              Slider(
+                value: value.toDouble(),
+                min: AppConstants.minBatchCapacity.toDouble(),
+                max: AppConstants.maxBatchCapacity.toDouble(),
+                divisions: AppConstants.maxBatchCapacity - AppConstants.minBatchCapacity,
+                label: '$value',
+                onChanged: (v) => setState(() => value = v.round()),
+              ),
+              Text(
+                'Maximum ${AppConstants.maxBatchCapacity} photos per session.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Back'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(value),
+              child: const Text('Start'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
