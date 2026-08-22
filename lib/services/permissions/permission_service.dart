@@ -13,6 +13,15 @@ class PermissionService {
     return result.isGranted;
   }
 
+  /// v2 addition: a status-only check (never prompts) used to decide
+  /// whether it's safe to silently prewarm the camera in the background —
+  /// showing a permission dialog unprompted just because a screen appeared
+  /// (before the person tapped "Take Photo") would be poor UX, so prewarming
+  /// only happens when permission was already granted previously.
+  static Future<bool> hasCameraPermission() async {
+    return (await Permission.camera.status).isGranted;
+  }
+
   /// `Permission.photos` maps to `READ_MEDIA_IMAGES` on Android 13+ and
   /// `READ_EXTERNAL_STORAGE` below that automatically via the plugin.
   static Future<bool> ensurePhotosPermission() async {
