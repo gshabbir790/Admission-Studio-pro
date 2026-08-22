@@ -18,15 +18,22 @@ class PrintSheetPage {
 
 /// Print-sheet builder (spec §19–21), now with a selectable page size
 /// (v2 fix — see [PrintPageSize]): 300 DPI raster, name printed *below*
-/// each photo (never over it), auto-paginated, grid (cols/rows) computed
-/// dynamically from the chosen page size and the target photo's pixel
-/// dimensions instead of a fixed 4x5 — that fixed grid made no sense once
-/// the page could be a small 4x6in sheet instead of A4.
+/// each photo (never over it), auto-paginated.
+///
+/// v3 fix (spec request: "4x6 sheet par 3x3 tasveerein fit aani chahiyen,
+/// A4 par 4x5, chahe output size koi bhi ho"): the grid is now a *fixed*
+/// layout per page size — always exactly 3 columns × 3 rows (9 photos) on a
+/// 4×6in sheet, and always exactly 4 columns × 5 rows (20 photos) on A4 —
+/// regardless of which photo size preset (Passport/Stamp/Square/Visa/…) is
+/// selected in Export Settings. Each photo is fitted (aspect-preserving,
+/// never distorted or stretched) into its fixed cell instead of the cell
+/// growing/shrinking to match the photo's own pixel dimensions, which is
+/// what the previous dynamic-grid version did.
 ///
 /// v2 fix: reads `photo.printPath` directly (persisted on the model, see
 /// `PhotoItem.markProcessed`) instead of an in-memory results map, and the
 /// actual compositing work runs inside a `compute()` isolate — building a
-/// full-resolution page by hand-drawing 6-20 photos onto one big canvas in
+/// full-resolution page by hand-drawing many photos onto one big canvas in
 /// pure Dart was slow enough on the UI isolate to trigger Android's ANR
 /// watchdog ("app isn't responding") on real devices.
 class PrintSheetService {
@@ -107,16 +114,40 @@ int _buildPagesIsolate(_BuildPagesArgs args) {
   final margin = (AppConstants.printMarginInches * dpi).round();
   final gutter = (AppConstants.printGutterInches * dpi).round();
 
-  // Cell reserves ~54px under the photo for the name label.
-  const labelHeight = 54;
-  final cellW = args.targetWidth;
-  final cellH = args.targetHeight + labelHeight;
+  // v3 fix: fixed grid per page size (see class doc) instead of a grid
+  // derived from the selected photo's pixel dimensions.
+  final int cols;
+  final int rows;
+  if (args.pageWidthIn <= AppConstants.photo4x6WidthInches + 0.01 &&
+      args.pageHeightIn <= AppConstants.photo4x6HeightInches + 0.01) {
+    cols = 3;
+    rows = 3;
+  } else {
+    cols = 4;
+    rows = 5;
+  }
+  final perPage = cols * rows;
 
+  // Cell reserves space under the photo for the name label.
+  const labelHeight = 54;
   final usableW = pageW - margin * 2;
   final usableH = pageH - margin * 2;
-  final cols = ((usableW + gutter) / (cellW + gutter)).floor().clamp(1, 999);
-  final rows = ((usableH + gutter) / (cellH + gutter)).floor().clamp(1, 999);
-  final perPage = cols * rows;
+
+  // The photo area within each cell, sized to fill the fixed grid exactly
+  // (minus gutters/label), then the actual photo is fitted into that area
+  // preserving its own aspect ratio (never stretched/distorted).
+  final cellOuterW = (usableW - gutter * (cols - 1)) / cols;
+  final cellOuterH = (usableH - gutter * (rows - 1)) / rows;
+  final photoAreaW = cellOuterW.floor();
+  final photoAreaH = (cellOuterH - labelHeight).floor().clamp(1, cellOuterH.floor());
+
+  final targetAspect = args.targetWidth / args.targetHeight;
+  var drawW = photoAreaW;
+  var drawH = (drawW / targetAspect).round();
+  if (drawH > photoAreaH) {
+    drawH = photoAreaH;
+    drawW = (drawH * targetAspect).round();
+  }
 
   final totalPages = (args.entries.length / perPage).ceil();
 
@@ -129,26 +160,27 @@ int _buildPagesIsolate(_BuildPagesArgs args) {
       final entry = pagePhotos[i];
       final col = i % cols;
       final row = i ~/ cols;
-      final x = margin + col * (cellW + gutter);
-      final y = margin + row * (cellH + gutter);
+      final cellX = margin + col * (cellOuterW + gutter);
+      final cellY = margin + row * (cellOuterH + gutter);
+      // Center the (aspect-preserving) drawn photo within its fixed cell.
+      final x = (cellX + (photoAreaW - drawW) / 2).round();
+      final y = (cellY + (photoAreaH - drawH) / 2).round();
 
       final printBytes = File(entry.printPath).readAsBytesSync();
       final decoded = img.decodeImage(printBytes);
       if (decoded == null) continue;
-      final fitted = img.copyResize(decoded, width: args.targetWidth, height: args.targetHeight);
+      final fitted = img.copyResize(decoded, width: drawW, height: drawH);
 
-      _strokeRect(canvas, x - 3, y - 3, args.targetWidth + 6, args.targetHeight + 6,
-          img.ColorRgb8(216, 207, 184));
+      _strokeRect(canvas, x - 3, y - 3, drawW + 6, drawH + 6, img.ColorRgb8(216, 207, 184));
       img.compositeImage(canvas, fitted, dstX: x, dstY: y);
-      _strokeRect(canvas, x, y, args.targetWidth, args.targetHeight,
-          img.ColorRgb8(176, 141, 87), thickness: 2);
+      _strokeRect(canvas, x, y, drawW, drawH, img.ColorRgb8(176, 141, 87), thickness: 2);
 
       _drawCenteredLabel(
         canvas,
         entry.label,
-        x + args.targetWidth ~/ 2,
-        y + args.targetHeight + 30,
-        args.targetWidth,
+        (cellX + photoAreaW / 2).round(),
+        y + drawH + 30,
+        photoAreaW,
       );
     }
 
