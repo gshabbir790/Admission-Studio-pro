@@ -45,6 +45,7 @@ class SessionNotifier extends StateNotifier<PhotoSession> {
       autoCaptureEnabled: s.autoCaptureEnabled,
       printPageSize: s.printPageSize,
       singleMode: s.singleMode,
+      outputFormat: s.outputFormat,
     );
   }
 
@@ -157,7 +158,9 @@ class SessionNotifier extends StateNotifier<PhotoSession> {
   }
 
   void addCapacityPage() {
-    state.capacity += AppConstants.capacityIncrement;
+    state.capacity = (state.capacity + AppConstants.capacityIncrement)
+        .clamp(0, AppConstants.maxBatchCapacity)
+        .toInt();
     _autosave();
   }
 
@@ -241,14 +244,31 @@ class SessionNotifier extends StateNotifier<PhotoSession> {
     _autosave();
   }
 
-  /// v2: choose single-photo (capacity locked to 1) vs. batch mode
-  /// (standard 20-slot paged grid). Only meaningful to call while the
-  /// session is empty — switching modes mid-batch is intentionally not
-  /// supported (mirrors the HTML app never having had this distinction at
-  /// all; this is an additive UX improvement, not a spec behavior to match).
-  void setSingleMode(bool single) {
+  /// v2: choose single-photo (capacity locked to 1) vs. batch mode. Only
+  /// meaningful to call while the session is empty — switching modes
+  /// mid-batch is intentionally not supported (mirrors the HTML app never
+  /// having had this distinction at all; this is an additive UX improvement,
+  /// not a spec behavior to match).
+  ///
+  /// [batchCapacity] is the "Multiple Photos" starting capacity chosen by
+  /// the user (spec: "Multiple Photos" now lets the person pick how many,
+  /// up to [AppConstants.maxBatchCapacity]) — ignored when [single] is true.
+  void setSingleMode(bool single, {int? batchCapacity}) {
     state.singleMode = single;
-    state.capacity = single ? 1 : AppConstants.defaultCapacity;
+    if (single) {
+      state.capacity = 1;
+    } else {
+      state.capacity = (batchCapacity ?? AppConstants.defaultCapacity).clamp(
+        AppConstants.minBatchCapacity,
+        AppConstants.maxBatchCapacity,
+      ).toInt();
+    }
+    _autosave();
+  }
+
+  void setOutputFormat(ImageOutputFormat format) {
+    _invalidateProcessedForExportSettings();
+    state.outputFormat = format;
     _autosave();
   }
 
