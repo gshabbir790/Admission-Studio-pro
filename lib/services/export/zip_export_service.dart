@@ -20,7 +20,14 @@ import '../../data/models/photo_item.dart';
 class ZipExportService {
   const ZipExportService._();
 
-  static Future<String> buildZip(List<PhotoItem> photos) async {
+  /// v2: [extension] follows `PhotoSession.outputFormat` ('jpg' or 'png') so
+  /// the ZIP entries' filenames match the *actual* encoded bytes on disk
+  /// (`ImageProcessingService` now writes `..._download.png` when PNG output
+  /// is selected) instead of always assuming `.jpg`.
+  static Future<String> buildZip(
+    List<PhotoItem> photos, {
+    String extension = 'jpg',
+  }) async {
     final entries = <_ZipEntryArgs>[];
     var i = 0;
     for (final photo in photos) {
@@ -35,7 +42,7 @@ class ZipExportService {
     final exportsDir = await ImageFileUtils.exportsDir();
     final outPath = p.join(exportsDir.path, 'admission_photos.zip');
 
-    return compute(_buildZipIsolate, _BuildZipArgs(entries, outPath));
+    return compute(_buildZipIsolate, _BuildZipArgs(entries, outPath, extension));
   }
 }
 
@@ -46,9 +53,10 @@ class _ZipEntryArgs {
 }
 
 class _BuildZipArgs {
-  const _BuildZipArgs(this.entries, this.outPath);
+  const _BuildZipArgs(this.entries, this.outPath, this.extension);
   final List<_ZipEntryArgs> entries;
   final String outPath;
+  final String extension;
 }
 
 /// Runs on a background isolate via `compute()`. Only primitives/simple
@@ -63,7 +71,11 @@ Future<String> _buildZipIsolate(_BuildZipArgs args) async {
   encoder.create(args.outPath);
   try {
     for (final entry in args.entries) {
-      final filename = FilenameUtils.uniqueJpgName(entry.baseName, usedNames);
+      final filename = FilenameUtils.uniqueName(
+        entry.baseName,
+        usedNames,
+        extension: args.extension,
+      );
       await encoder.addFile(File(entry.sourcePath), filename);
     }
     await encoder.close();
