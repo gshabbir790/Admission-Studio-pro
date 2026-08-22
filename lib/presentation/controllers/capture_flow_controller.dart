@@ -66,6 +66,18 @@ class CaptureFlowController extends StateNotifier<CaptureFlowState> {
   final Ref _ref;
   final Queue<String> _galleryQueue = Queue<String>();
 
+  /// v2 addition (spec request: "camera jaldi launch nahi hota") — kicks off
+  /// camera initialization in the background as soon as the capture chooser
+  /// screen appears, well before the person taps "Take Photo with Camera",
+  /// so by the time [enterLive] actually needs the controller it's often
+  /// already warm. Safe to call repeatedly / when permission isn't granted
+  /// yet — [CameraService.prewarm] is a no-op once already initializing.
+  Future<void> prewarmCamera() async {
+    final granted = await PermissionService.hasCameraPermission();
+    if (!granted) return;
+    _ref.read(cameraServiceProvider).prewarm();
+  }
+
   /// Starts the live camera preview. Mirrors `goLive()`. Requests camera
   /// permission first (spec §30) — a denial routes to the same
   /// `cameraAvailable: false` fallback UI as a hardware failure (spec §34:

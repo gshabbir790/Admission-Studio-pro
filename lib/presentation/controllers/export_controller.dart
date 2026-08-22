@@ -10,6 +10,7 @@ import '../../services/export/save_service.dart';
 import '../../services/export/zip_export_service.dart';
 import '../../services/pdf/pdf_export_service.dart';
 import '../../services/pdf/print_sheet_service.dart';
+import '../../services/segmentation/segmentation_service.dart';
 import '../providers/service_providers.dart';
 import '../providers/session_provider.dart';
 
@@ -86,6 +87,11 @@ class ExportController extends StateNotifier<ExportState> {
     var done = 0;
     var failed = 0;
 
+    // v2 fix: clear any "segmentation disabled after repeated failures"
+    // state left over from a previous run before starting a fresh batch —
+    // see SegmentationService doc.
+    _ref.read(segmentationServiceProvider).resetBatchHealth();
+
     state = state.copyWith(
       isProcessing: true,
       hasResults: false,
@@ -114,6 +120,7 @@ class ExportController extends StateNotifier<ExportState> {
             backgroundMode: session.backgroundMode,
             backgroundIntensity: session.backgroundIntensity,
             jpegQuality: session.jpegQuality,
+            outputFormat: session.outputFormat,
             sizeLimitBytes: sizeLimitBytes,
           );
           sessionNotifier.markPhotoProcessed(
@@ -140,7 +147,10 @@ class ExportController extends StateNotifier<ExportState> {
 
   Future<String> exportZip() async {
     final session = _ref.read(sessionProvider);
-    final path = await ZipExportService.buildZip(session.photos);
+    final path = await ZipExportService.buildZip(
+      session.photos,
+      extension: session.outputFormat.extension,
+    );
     state = state.copyWith(zipPath: path);
     return path;
   }
