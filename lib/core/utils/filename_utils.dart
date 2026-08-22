@@ -13,11 +13,18 @@ class FilenameUtils {
 
   /// Collision-safe `.jpg` filename generator, matching the HTML app's
   /// `usedNames` map in `downloadZip()`: `Ali.jpg`, then `Ali_2.jpg`, etc.
-  static String uniqueJpgName(String base, Set<String> usedNames) {
-    var name = '$base.jpg';
+  static String uniqueJpgName(String base, Set<String> usedNames) =>
+      uniqueName(base, usedNames, extension: 'jpg');
+
+  /// v2: format-aware version of [uniqueJpgName] — used once export
+  /// settings gained an actual PNG/JPEG output-format switch, so the ZIP
+  /// entries need the extension that matches the *real* encoded bytes,
+  /// not just the filename the person typed.
+  static String uniqueName(String base, Set<String> usedNames, {required String extension}) {
+    var name = '$base.$extension';
     var counter = 2;
     while (usedNames.contains(name)) {
-      name = '${base}_$counter.jpg';
+      name = '${base}_$counter.$extension';
       counter++;
     }
     usedNames.add(name);
