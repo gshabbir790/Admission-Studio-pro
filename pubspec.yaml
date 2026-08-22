@@ -1,7 +1,7 @@
 name: admission_studio_pro
 description: "Admission Photo Studio Pro — offline batch student photo capture, face-aware resize, background removal, ZIP/PDF export."
 publish_to: 'none'
-version: 1.1.0+2
+version: 1.2.0+3
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -74,10 +74,30 @@ flutter:
           weight: 700
 
 flutter_launcher_icons:
-  android: "launch_background"
+  # v2 fix: this was "launch_background" — a typo that told the generator to
+  # write the new icon into mipmap/launch_background.png (an unused filename)
+  # instead of overwriting mipmap/ic_launcher*.png, which is what
+  # AndroidManifest.xml's android:icon="@mipmap/ic_launcher" actually loads.
+  # Net effect: the app compiled fine and the *asset* was updated, but the
+  # icon shown by the Android installer/launcher never changed (report: "naya
+  # icon lagaya hai lekin install ke waqt purana hi dikhta hai"). `android:
+  # true` makes the generator overwrite the real ic_launcher/ic_launcher_round
+  # mipmap PNGs (all densities) plus the adaptive-icon foreground, which is
+  # the file set the manifest and the OS launcher actually read.
+  android: true
   ios: false   # <--- Is ko false kar dein
   image_path: "assets/icon/app_icon_master_1024.png"
   min_sdk_android: 21
+  adaptive_icon_background: "#0B5C5A"
+  adaptive_icon_foreground: "assets/icon/app_icon_master_1024.png"
+  remove_alpha_ios: false
   web:
     generate: true
     image_path: "assets/icon/app_icon_master_1024.png"
+
+# NOTE: after pulling this change, regenerate the launcher icon once with:
+#   flutter pub get
+#   dart run flutter_launcher_icons
+# then do a full uninstall of any previously-installed debug/release build
+# before reinstalling — Android caches the old launcher icon per package
+# signature on some OEM launchers even after a plain reinstall.
