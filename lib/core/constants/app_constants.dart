@@ -6,6 +6,10 @@ class AppConstants {
   // ---- Grid / capacity ----
   static const int defaultCapacity = 20;
   static const int capacityIncrement = 20;
+  // v2: hard ceiling for "Multiple Photos" mode (spec request — the batch
+  // picker must never grow past 60 photos in one session).
+  static const int maxBatchCapacity = 60;
+  static const int minBatchCapacity = 2;
 
   // ---- Auto-capture ----
   static const int readyStreakNeeded = 12; // consecutive good frames before countdown
@@ -39,7 +43,22 @@ class AppConstants {
   // ---- File-size-limited compression (binary search) ----
   static const double compressQualityLow = 0.25;
   static const double compressQualityHigh = 0.97;
-  static const int compressIterations = 8;
+  // v2: reduced from 8 → 6 rounds and given a smarter first guess (see
+  // CompressionService) — fewer JPEG re-encodes per photo for the same
+  // final accuracy, which matters a lot once a batch is 20-60 photos.
+  static const int compressIterations = 6;
+
+  // ---- Segmentation batch health (background-removal stability) ----
+  // v2 fix: on some devices, calling Selfie Segmentation back-to-back for a
+  // long batch (20+ photos) gradually starves native memory and the whole
+  // app could stop responding partway through "Process". Two mitigations:
+  // 1) recycle (close + recreate) the native segmenter every N photos to
+  //    release accumulated native buffers, and 2) after several consecutive
+  //    segmentation failures in a row, stop attempting segmentation for the
+  //    rest of the batch (falling back to the original background) instead
+  //    of repeatedly hitting whatever is failing.
+  static const int segmenterRecycleEvery = 12;
+  static const int segmenterMaxConsecutiveFailures = 3;
 
   // ---- Custom size bounds ----
   static const int customSizeMin = 50;
@@ -72,8 +91,13 @@ class AppConstants {
   static const String androidPackageName = 'com.gshabbir.photostudio';
 }
 
-/// The four built-in size presets from the HTML app (width, height in px @300DPI)
-/// plus their physical size labels for display.
+/// Built-in size presets (width, height in px @300DPI) plus their physical
+/// size labels for display.
+///
+/// v2: added several common admission/ID document sizes on top of the
+/// original four (spec request: "Photo size mein mazeed default sizes add
+/// karein") — all still expressed as exact 300 DPI pixel dimensions so they
+/// drop straight into the existing resize/print pipeline unchanged.
 @HiveType(typeId: 4)
 enum PhotoSizePreset {
   @HiveField(0)
@@ -85,7 +109,19 @@ enum PhotoSizePreset {
   @HiveField(3)
   board(width: 200, height: 260, label: 'Board', physical: null),
   @HiveField(4)
-  custom(width: 413, height: 531, label: 'Custom', physical: null);
+  custom(width: 413, height: 531, label: 'Custom', physical: null),
+  @HiveField(5)
+  usPassport(width: 600, height: 600, label: 'US Passport/Visa', physical: '2 × 2 in'),
+  @HiveField(6)
+  cnic(width: 413, height: 531, label: 'CNIC/NADRA', physical: '35 × 45 mm'),
+  @HiveField(7)
+  visa(width: 443, height: 591, label: 'Visa (35×50mm)', physical: '35 × 50 mm'),
+  @HiveField(8)
+  wallet(width: 236, height: 354, label: 'Wallet', physical: '2 × 3 in'),
+  @HiveField(9)
+  postcard(width: 1200, height: 1800, label: 'Postcard', physical: '4 × 6 in'),
+  @HiveField(10)
+  a4Portrait(width: 2481, height: 3507, label: 'A4 Full Page', physical: '210 × 297 mm');
 
   const PhotoSizePreset({
     required this.width,
@@ -98,6 +134,24 @@ enum PhotoSizePreset {
   final int height;
   final String label;
   final String? physical;
+}
+
+/// v2 addition: actual output file format for the ZIP/download/Gallery copy
+/// of each photo (spec request — previously the app only ever wrote JPEG
+/// regardless of what a user might expect from a ".png" filename). The
+/// print-sheet/PDF copy always stays JPEG internally since PDF/print
+/// compositing doesn't benefit from PNG's lossless-but-larger output.
+@HiveType(typeId: 8)
+enum ImageOutputFormat {
+  @HiveField(0)
+  jpeg(label: 'JPEG', extension: 'jpg'),
+  @HiveField(1)
+  png(label: 'PNG', extension: 'png');
+
+  const ImageOutputFormat({required this.label, required this.extension});
+
+  final String label;
+  final String extension;
 }
 
 @HiveType(typeId: 5)
@@ -130,21 +184,29 @@ enum PrintPageSize {
     widthInches: AppConstants.photo4x6WidthInches,
     heightInches: AppConstants.photo4x6HeightInches,
     label: '4×6 in (Photo Lab Standard)',
+    shortLabel: '4×6 in',
   ),
   @HiveField(1)
   a4(
     widthInches: AppConstants.a4WidthInches,
     heightInches: AppConstants.a4HeightInches,
     label: 'A4',
+    shortLabel: 'A4',
   );
 
   const PrintPageSize({
     required this.widthInches,
     required this.heightInches,
     required this.label,
+    required this.shortLabel,
   });
 
   final double widthInches;
   final double heightInches;
   final String label;
+
+  /// v2 addition: a compact form of [label] for places with limited
+  /// horizontal room (e.g. the print-preview app bar) — see
+  /// PrintSheetPreviewScreen doc for the overflow bug this fixes.
+  final String shortLabel;
 }

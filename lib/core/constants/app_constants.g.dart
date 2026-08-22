@@ -23,6 +23,18 @@ class PhotoSizePresetAdapter extends TypeAdapter<PhotoSizePreset> {
         return PhotoSizePreset.board;
       case 4:
         return PhotoSizePreset.custom;
+      case 5:
+        return PhotoSizePreset.usPassport;
+      case 6:
+        return PhotoSizePreset.cnic;
+      case 7:
+        return PhotoSizePreset.visa;
+      case 8:
+        return PhotoSizePreset.wallet;
+      case 9:
+        return PhotoSizePreset.postcard;
+      case 10:
+        return PhotoSizePreset.a4Portrait;
       default:
         return PhotoSizePreset.passport;
     }
@@ -45,6 +57,24 @@ class PhotoSizePresetAdapter extends TypeAdapter<PhotoSizePreset> {
         break;
       case PhotoSizePreset.custom:
         writer.writeByte(4);
+        break;
+      case PhotoSizePreset.usPassport:
+        writer.writeByte(5);
+        break;
+      case PhotoSizePreset.cnic:
+        writer.writeByte(6);
+        break;
+      case PhotoSizePreset.visa:
+        writer.writeByte(7);
+        break;
+      case PhotoSizePreset.wallet:
+        writer.writeByte(8);
+        break;
+      case PhotoSizePreset.postcard:
+        writer.writeByte(9);
+        break;
+      case PhotoSizePreset.a4Portrait:
+        writer.writeByte(10);
         break;
     }
   }
@@ -178,6 +208,45 @@ class PrintPageSizeAdapter extends TypeAdapter<PrintPageSize> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is PrintPageSizeAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class ImageOutputFormatAdapter extends TypeAdapter<ImageOutputFormat> {
+  @override
+  final int typeId = 8;
+
+  @override
+  ImageOutputFormat read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return ImageOutputFormat.jpeg;
+      case 1:
+        return ImageOutputFormat.png;
+      default:
+        return ImageOutputFormat.jpeg;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, ImageOutputFormat obj) {
+    switch (obj) {
+      case ImageOutputFormat.jpeg:
+        writer.writeByte(0);
+        break;
+      case ImageOutputFormat.png:
+        writer.writeByte(1);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ImageOutputFormatAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
