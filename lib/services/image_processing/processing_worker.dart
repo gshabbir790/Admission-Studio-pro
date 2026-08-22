@@ -8,6 +8,16 @@ import 'compression_service.dart';
 import 'image_adjustments_service.dart';
 import 'resize_service.dart';
 
+// v2 speed fix (spec request: "processing bohat slow hai" — see also the
+// class doc on `ImageProcessingService`): the pipeline used to encode the
+// same working image to JPEG bytes twice (a "clean" copy and a byte-identical
+// "captioned" copy, since captioning has been removed — see
+// `ImageProcessingService`) and then decode *both* of those separately in
+// [encodeOutputsInIsolate] before re-encoding each at its final quality —
+// four extra JPEG codec passes per photo for no visual difference. Now there
+// is exactly one shared source image decoded once here and reused for both
+// the print and download encodes.
+
 /// CPU-heavy, platform-independent image work.
 ///
 /// This worker deliberately accepts/returns byte buffers and primitive values
@@ -67,16 +77,22 @@ Uint8List prepareImageInIsolate(PrepareImageArgs args) {
 
 class EncodeOutputsArgs {
   const EncodeOutputsArgs({
-    required this.printImageBytes,
-    required this.downloadImageBytes,
+    required this.sourceImageBytes,
     required this.jpegQuality,
     required this.sizeLimitBytes,
+    this.downloadFormat = ImageOutputFormat.jpeg,
   });
 
-  final Uint8List printImageBytes;
-  final Uint8List downloadImageBytes;
+  /// The single clean (caption-free) processed image, shared as the source
+  /// for both the print copy and the download/ZIP copy.
+  final Uint8List sourceImageBytes;
   final int jpegQuality;
   final int? sizeLimitBytes;
+
+  /// v2: actual output format for the download/ZIP/Gallery copy. The print
+  /// copy always stays JPEG internally (used only for print-sheet/PDF
+  /// compositing, never exposed to the user as a standalone file).
+  final ImageOutputFormat downloadFormat;
 }
 
 class EncodedOutputs {
@@ -90,24 +106,35 @@ class EncodedOutputs {
 }
 
 EncodedOutputs encodeOutputsInIsolate(EncodeOutputsArgs args) {
-  final printImage = img.decodeImage(args.printImageBytes);
-  final downloadImage = img.decodeImage(args.downloadImageBytes);
-  if (printImage == null || downloadImage == null) {
+  final source = img.decodeImage(args.sourceImageBytes);
+  if (source == null) {
     throw StateError('Could not decode the processed image for export.');
   }
 
   final printBytes = Uint8List.fromList(
-    img.encodeJpg(printImage, quality: 95),
+    img.encodeJpg(source, quality: 95),
   );
 
-  final downloadBytes = (args.sizeLimitBytes != null && args.sizeLimitBytes! > 0)
-      ? CompressionService.compressToSize(downloadImage, args.sizeLimitBytes!)
-      : Uint8List.fromList(
-          img.encodeJpg(downloadImage, quality: args.jpegQuality.clamp(
-            AppConstants.jpegQualityMin,
-            AppConstants.jpegQualityMax,
-          ).toInt()),
-        );
+  final Uint8List downloadBytes;
+  if (args.downloadFormat == ImageOutputFormat.png) {
+    // PNG is lossless — there's no quality knob to binary-search against a
+    // size limit, so we just use maximum (level 9) compression. The
+    // "Limit file size" control is disabled in the UI for PNG output (see
+    // ExportSettingsSheet) so this branch is a defensive fallback, not the
+    // primary path.
+    downloadBytes = Uint8List.fromList(img.encodePng(source, level: 9));
+  } else if (args.sizeLimitBytes != null && args.sizeLimitBytes! > 0) {
+    downloadBytes = CompressionService.compressToSize(source, args.sizeLimitBytes!);
+  } else {
+    downloadBytes = Uint8List.fromList(
+      img.encodeJpg(
+        source,
+        quality: args.jpegQuality
+            .clamp(AppConstants.jpegQualityMin, AppConstants.jpegQualityMax)
+            .toInt(),
+      ),
+    );
+  }
 
   return EncodedOutputs(
     printBytes: printBytes,
