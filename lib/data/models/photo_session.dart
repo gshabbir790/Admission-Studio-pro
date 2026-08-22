@@ -29,6 +29,7 @@ class PhotoSession extends HiveObject {
     this.autoCaptureEnabled = true,
     this.printPageSize = PrintPageSize.photo4x6,
     this.singleMode = false,
+    this.outputFormat = ImageOutputFormat.jpeg,
   })  : photos = photos ?? [],
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
@@ -93,11 +94,22 @@ class PhotoSession extends HiveObject {
   @HiveField(15)
   bool singleMode;
 
-  /// Grow capacity in fixed 20-photo pages, same as HTML's `capacity += 20`.
+  /// v2 addition: actual file format (JPEG/PNG) written for the ZIP/
+  /// download/Gallery copy of each processed photo. See [ImageOutputFormat].
+  @HiveField(17)
+  ImageOutputFormat outputFormat;
+
+  /// Grow capacity in fixed 20-photo pages, same as HTML's `capacity += 20`
+  /// — capped at [AppConstants.maxBatchCapacity] (v2: "Multiple Photos"
+  /// mode must never silently grow past the 60-photo ceiling the user
+  /// picked/was offered).
   void growCapacityIfNeeded() {
     if (singleMode) return;
-    while (photos.length >= capacity) {
+    while (photos.length >= capacity && capacity < AppConstants.maxBatchCapacity) {
       capacity += AppConstants.capacityIncrement;
+    }
+    if (capacity > AppConstants.maxBatchCapacity) {
+      capacity = AppConstants.maxBatchCapacity;
     }
   }
 

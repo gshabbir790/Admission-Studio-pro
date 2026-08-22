@@ -34,13 +34,14 @@ class PhotoSessionAdapter extends TypeAdapter<PhotoSession> {
       sizeLimitValue: fields[11] as double,
       sizeLimitUnit: fields[12] as FileSizeUnit,
       autoCaptureEnabled: fields[13] as bool,
+      outputFormat: (fields[17] as ImageOutputFormat?) ?? ImageOutputFormat.jpeg,
     );
   }
 
   @override
   void write(BinaryWriter writer, PhotoSession obj) {
     writer
-      ..writeByte(17)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -74,7 +75,9 @@ class PhotoSessionAdapter extends TypeAdapter<PhotoSession> {
       ..writeByte(15)
       ..write(obj.singleMode)
       ..writeByte(16)
-      ..write(obj.backgroundIntensity);
+      ..write(obj.backgroundIntensity)
+      ..writeByte(17)
+      ..write(obj.outputFormat);
   }
 
   @override
